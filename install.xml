@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+  <modification>
+  <name>[OCN] Secret Key</name>
+  <version>3.0.0.0</version>
+  <author>Hkr</author>
+  <link>https://forum.opencart.name/resources/114/</link>
+  <code>ocn__secret_key</code>
+
+<!-- Login -->
+  <!-- Logic -->
+  <file path="admin/controller/common/login.php">
+    <operation>
+      <search><![CDATA[private $error = array();]]></search>
+      <add position="after" trim="true"><![CDATA[private $secret;]]></add>
+    </operation>
+    <operation>
+      <search><![CDATA[if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {]]></search>
+      <add position="before" trim="true"><![CDATA[
+        if ($this->config->get('config_secret')) {
+          if (isset($this->request->get[$this->config->get('config_secret_key')])) {
+            $this->session->data[$this->config->get('config_secret_key')] = $this->request->get[$this->config->get('config_secret_key')];
+          }
+          if ($this->request->server['REQUEST_METHOD'] == 'POST') {
+            if (isset($this->session->data[$this->config->get('config_secret_key')])) {
+              $this->secret = $this->session->data[$this->config->get('config_secret_key')];
+              unset($this->session->data[$this->config->get('config_secret_key')]);
+            }
+          }
+        }
+      ]]></add>
+    </operation>
+    <operation>
+      <search><![CDATA[if(!$this->error) {]]></search>
+      <add position="before" trim="true"><![CDATA[
+        if (($this->config->get('config_secret') && $this->secret !== $this->config->get('config_secret_value')) || ($this->config->get('config_secret_fake') && isset($this->request->post['secret']) && $this->request->post['secret'] !== '')) {
+          $this->error['warning'] = $this->language->get('error_login');
+          $this->model_user_user->addLoginAttempt($this->request->post['username']);
+          unset($this->session->data['user_token']);
+        }
+      ]]></add>
+    </operation>
+  </file>
+  <!-- Hide input for bots -->
+  <file path="admin/view/template/common/login.twig">
+    <operation>
+      <search><![CDATA[{% if redirect %}]]></search>
+      <add position="before" trim="true"><![CDATA[<input type="hidden" name="secret" value="" />]]></add>
+    </operation>
+  </file>
+
+<!-- Settings -->
+  <!-- Fields for config settings -->
+  <file path="admin/controller/setting/setting.php">
+    <operation>
+      <search><![CDATA[if (isset($this->request->post['config_secure'])) {]]></search>
+      <add position="before" trim="true"><![CDATA[
+        if (isset($this->request->post['config_secret'])) {
+          $data['config_secret'] = $this->request->post['config_secret'];
+        } else {
+          $data['config_secret'] = $this->config->get('config_secret');
+        }
+        if (isset($this->request->post['config_secret_key'])) {
+          $data['config_secret_key'] = $this->request->post['config_secret_key'];
+        } else {
+          $data['config_secret_key'] = $this->config->get('config_secret_key');
+        }
+        if (isset($this->request->post['config_secret_value'])) {
+          $data['config_secret_value'] = $this->request->post['config_secret_value'];
+        } else {
+          $data['config_secret_value'] = $this->config->get('config_secret_value');
+        }
+        if (isset($this->request->post['config_secret_fake'])) {
+          $data['config_secret_fake'] = $this->request->post['config_secret_fake'];
+        } else {
+          $data['config_secret_fake'] = $this->config->get('config_secret_fake');
+        }
+      ]]></add>
+    </operation>
+  </file>
+  <!-- languages -->
+  <file path="admin/language/ru-ru/setting/setting.php">
+    <operation>
+      <search><![CDATA[// Entry]]></search>
+      <add position="after" trim="true"><![CDATA[
+        $_['entry_secret']                   = 'Использовать секрет';
+        $_['entry_secret_key']               = 'Ключ секрета';
+        $_['entry_secret_value']             = 'Значение секрета';
+        $_['entry_secret_fake']              = 'Использовать фейк секрета';
+      ]]></add>
+    </operation>
+    <operation>
+      <search><![CDATA[// Help]]></search>
+      <add position="after" trim="true"><![CDATA[
+        $_['help_secret']                    = 'Использование секретного параметр для входа в админку в формате secret_key=secret_value.';
+        $_['help_secret_key']                = 'Ключ секрета secret_key.';
+        $_['help_secret_value']              = 'Значение секрета secret_value.';
+        $_['help_secret_fake']               = 'Активация скрытого поля secret для заполнения, например, ботами.';
+      ]]></add>
+    </operation>
+  </file>
+  <file path="admin/language/en-gb/setting/setting.php">
+    <operation>
+      <search><![CDATA[// Entry]]></search>
+      <add position="after" trim="true"><![CDATA[
+        $_['entry_secret']                   = 'Use secret';
+        $_['entry_secret_key']               = 'Secret Key';
+        $_['entry_secret_value']             = 'Secret Value';
+        $_['entry_secret_fake']              = 'Use Secret fake';
+      ]]></add>
+    </operation>
+    <operation>
+      <search><![CDATA[// Help]]></search>
+      <add position="after" trim="true"><![CDATA[
+        $_['help_secret']                    = 'Using a secret parameter to enter the admin panel in the format secret_key=secret_value.';
+        $_['help_secret_key']                = 'Secret Key secret_key.';
+        $_['help_secret_value']              = 'Secret Value secret_value.';
+        $_['help_secret_fake']               = 'Activating the hidden secret field for filling, for example, by bots.';
+      ]]></add>
+    </operation>
+  </file>
+  <!-- Fields in settings -->
+  <file path="admin/view/template/setting/setting.twig">
+    <operation>
+      <search><![CDATA[<legend>{{ text_security }}</legend>]]></search>
+      <add position="after" trim="true"><![CDATA[
+        <div class="form-group">
+          <label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_secret }}">{{ entry_secret }}</span></label>
+          <div class="col-sm-10">
+            <label class="radio-inline">
+              <input type="radio" name="config_secret" value="1" {% if config_secret %} checked="checked" {% endif %} />
+              {{ text_yes }}
+            </label>
+            <label class="radio-inline">
+              <input type="radio" name="config_secret" value="0" {% if not config_secret %} checked="checked" {% endif %} />
+              {{ text_no }}
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-2 control-label" for="input-secret-key"><span data-toggle="tooltip" title="{{ help_secret_key }}">{{ entry_secret_key }}</span></label>
+          <div class="col-sm-10">
+            <input type="text" name="config_secret_key" value="{{ config_secret_key }}" placeholder="{{ entry_secret_key }}" id="input-secret-key" class="form-control" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-2 control-label" for="input-secret-value"><span data-toggle="tooltip" title="{{ help_secret_value }}">{{ entry_secret_value }}</span></label>
+          <div class="col-sm-10">
+            <input type="text" name="config_secret_value" value="{{ config_secret_value }}" placeholder="{{ entry_secret_value }}" id="input-secret-value" class="form-control" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-sm-2 control-label"><span data-toggle="tooltip" title="{{ help_secret_fake }}">{{ entry_secret_fake }}</span></label>
+          <div class="col-sm-10">
+            <label class="radio-inline">
+              <input type="radio" name="config_secret_fake" value="1" {% if config_secret_fake %} checked="checked" {% endif %} />
+              {{ text_yes }}
+            </label>
+            <label class="radio-inline">
+              <input type="radio" name="config_secret_fake" value="0" {% if not config_secret_fake %} checked="checked" {% endif %} />
+              {{ text_no }}
+            </label>
+          </div>
+        </div>
+      ]]></add>
+    </operation>
+  </file>
+</modification>
